@@ -2,23 +2,25 @@ use std::time::Duration;
 
 use crossbeam_channel::{Receiver, Sender, unbounded};
 use tokio::time::sleep;
+use chrono;
+use chrono::{DateTime, Utc};
 
 use crate::executor::Executor;
 use crate::command::Command;
 
-pub struct ModuleRunner<DataFormat> {
-    executor: Box<dyn Executor<DataFormat>>,
+pub struct ModuleRunner<OutgoingDataFormat> {
+    executor: Box<dyn Executor<OutgoingDataFormat>>,
     timeout_duration: Duration,
     command_receiver: Receiver<Command>,
     pub command_sender:  Sender<Command>,
-    outgoing_sender: Sender<DataFormat>,
+    outgoing_sender: Sender<OutgoingDataFormat>,
     graceful_stop: bool,
-    // TODO: introduce last_housekeeping_message
+    last_housekeeping_message: Option<DateTime<Utc>>
 }
 
-impl<DataFormat> ModuleRunner<DataFormat> {
+impl<OutgoingDataFormat> ModuleRunner<OutgoingDataFormat> {
 
-    pub fn new(executor: Box<dyn Executor<DataFormat>>, timeout_duration: Duration, outgoing_sender: Sender<DataFormat>) -> Self {
+    pub fn new(executor: Box<dyn Executor<OutgoingDataFormat>>, timeout_duration: Duration, outgoing_sender: Sender<OutgoingDataFormat>) -> Self {
         let (sender, receiver) = unbounded();
         Self {
             executor,
@@ -27,6 +29,7 @@ impl<DataFormat> ModuleRunner<DataFormat> {
             command_receiver: receiver,
             outgoing_sender,
             graceful_stop: false,
+            last_housekeeping_message: None
         }
     }
 
@@ -40,10 +43,9 @@ impl<DataFormat> ModuleRunner<DataFormat> {
                     self.executor.on_stop();
                 }
                 Command::Housekeeping => {
-                    // TODO: implement
                     // Will set the last received housekeeping message
                     self.executor.on_housekeeping_message();
-                    panic!("Not implemented yet")
+                    self.last_housekeeping_message = Some(chrono::Utc::now());
                 }
                 Command::SetTimeout(new_duration) => {
                     self.executor.on_timeout_change(new_duration);
@@ -58,16 +60,22 @@ impl<DataFormat> ModuleRunner<DataFormat> {
         // TODO: state handling, sending messages, communicating with the Thread itself
         loop {
             self.handle_incoming_messages();
-            match self.executor.execute() {
-                None => {}
-                Some(out) => {
-                    self.outgoing_sender.send(out).expect("TODO: panic message");
-                }
+
+            // Execute executor. Only send messages if data is received
+            if let Some(out) = self.executor.execute() {
+                self.outgoing_sender.send(out).expect("TODO: panic message");
             }
             
             // TODO: state handling!
 
-            // TODO: Check Housekeeping interval. If limit exceeded, set graceful stop
+            // Housekeeping interval, ignore it if never explicitly set!
+            if let Some(time) = self.last_housekeeping_message {
+                // Todo: make configurable
+                if Utc::now() - Duration::from_secs(300) > time {
+                    self.graceful_stop = false;
+                    self.executor.on_housekeeping_shutdown();
+                }
+            }
             if self.graceful_stop {
                 break
             }
@@ -76,5 +84,5 @@ impl<DataFormat> ModuleRunner<DataFormat> {
     }
 }
 
-unsafe impl<DataFormat> Send for ModuleRunner<DataFormat> {}
-unsafe impl<DataFormat> Sync for ModuleRunner<DataFormat> {}
+unsafe impl<OutgoingDataFormat> Send for ModuleRunner<OutgoingDataFormat> {}
+unsafe impl<OutgoingDataFormat> Sync for ModuleRunner<OutgoingDataFormat> {}

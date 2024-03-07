@@ -28,14 +28,6 @@ mod tests {
         fn on_stop(&mut self) {
             warn!("Gracefully stopped {}", self.name)
         }
-
-        fn on_message(&mut self) {
-            todo!()
-        }
-
-        fn on_housekeeping_message(&mut self) {
-            todo!()
-        }
     }
 
 
@@ -49,7 +41,7 @@ mod tests {
         handler.spawn(0, module);
         handler.spawn(1, module2);
         tokio::time::sleep(Duration::from_secs(5)).await;
-        handler.send_message(0, Command::Stop);
+        handler.send_stop_message(0);
         tokio::time::sleep(Duration::from_secs(5)).await;
         _receiver.try_iter().for_each(|message| {
             info!("Received message {message}");

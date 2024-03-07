@@ -3,10 +3,10 @@ use std::time::Duration;
 use async_trait::async_trait;
 
 #[async_trait]
-pub trait Executor<DataFormat> {
+pub trait Executor<OutgoingDataFormat> {
 
     /// Main code will be executed here!
-    fn execute(&self) -> Option<DataFormat>;
+    fn execute(&self) -> Option<OutgoingDataFormat>;
 
     /// Will be called when stop is received
     fn on_stop(&mut self) {
@@ -25,7 +25,7 @@ pub trait Executor<DataFormat> {
 
     /// Will be called if housekeeping interval could not be satisfied
     fn on_housekeeping_shutdown(&mut self) {
-        todo!()
+
     }
 
     /// Change timeout duration
