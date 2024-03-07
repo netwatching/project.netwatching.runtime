@@ -22,7 +22,7 @@ impl<DataFormat: 'static> Handler<DataFormat> {
 
     /// Spawn a new ModuleRunner task and execute it immediately
     pub fn spawn(&mut self, id: u64, mut module: ModuleRunner<DataFormat>) {
-        let sender = module.incoming_sender.clone();
+        let sender = module.command_sender.clone();
         // TODO: do something meaningful with handle
         let _handle = tokio::spawn(async move {
             module.runner().await;

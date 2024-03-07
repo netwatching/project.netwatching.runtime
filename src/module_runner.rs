@@ -9,8 +9,8 @@ use crate::command::Command;
 pub struct ModuleRunner<DataFormat> {
     executor: Box<dyn Executor<DataFormat>>,
     timeout_duration: Duration,
-    incoming_receiver: Receiver<Command>,
-    pub incoming_sender:  Sender<Command>,
+    command_receiver: Receiver<Command>,
+    pub command_sender:  Sender<Command>,
     outgoing_sender: Sender<DataFormat>,
     graceful_stop: bool,
     // TODO: introduce last_housekeeping_message
@@ -23,8 +23,8 @@ impl<DataFormat> ModuleRunner<DataFormat> {
         Self {
             executor,
             timeout_duration,
-            incoming_sender: sender,
-            incoming_receiver: receiver,
+            command_sender: sender,
+            command_receiver: receiver,
             outgoing_sender,
             graceful_stop: false,
         }
@@ -32,7 +32,7 @@ impl<DataFormat> ModuleRunner<DataFormat> {
 
     fn handle_incoming_messages(&mut self) {
         // Handle messages, non-blocking. If multiple messages arrived, all of them will be executed
-        self.incoming_receiver.try_iter().for_each(|message| {
+        self.command_receiver.try_iter().for_each(|message| {
             match message {
                 Command::Stop => {
                     //
