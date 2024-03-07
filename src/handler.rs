@@ -4,11 +4,11 @@ use std::marker::PhantomData;
 use crossbeam_channel::Sender;
 use rayon::prelude::*;
 
-use crate::message::IncomingMessage;
+use crate::command::Command;
 use crate::module_runner::ModuleRunner;
 
 pub struct Handler<DataFormat> {
-    modules_sender: HashMap<u64, Sender<IncomingMessage>>,
+    modules_sender: HashMap<u64, Sender<Command>>,
     pd: PhantomData<DataFormat>
 }
 
@@ -31,7 +31,7 @@ impl<DataFormat: 'static> Handler<DataFormat> {
     }
 
     /// Send message to specified module. Returns false if it does not exist
-    pub fn send_message(&self, id: u64, message: IncomingMessage) -> bool {
+    pub fn send_message(&self, id: u64, message: Command) -> bool {
         match self.modules_sender.get(&id) {
             None => {
                 false
@@ -48,7 +48,7 @@ impl<DataFormat: 'static> Handler<DataFormat> {
     /// If the thread does not receive a housekeeping message for the specified time it will end itself gracefully!
     pub fn housekeeping(&self) {
         self.modules_sender.par_iter().for_each(|(id, _)| {
-           self.send_message(*id, IncomingMessage::Housekeeping);
+           self.send_message(*id, Command::Housekeeping);
         });
     }
 }

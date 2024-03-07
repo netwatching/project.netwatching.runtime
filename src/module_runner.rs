@@ -4,21 +4,21 @@ use crossbeam_channel::{Receiver, Sender, unbounded};
 use tokio::time::sleep;
 
 use crate::executor::Executor;
-use crate::message::{IncomingMessage, OutgoingMessage};
+use crate::command::Command;
 
 pub struct ModuleRunner<DataFormat> {
     executor: Box<dyn Executor<DataFormat>>,
     timeout_duration: Duration,
-    incoming_receiver: Receiver<IncomingMessage>,
-    pub incoming_sender:  Sender<IncomingMessage>,
-    outgoing_sender: Sender<OutgoingMessage<DataFormat>>,
+    incoming_receiver: Receiver<Command>,
+    pub incoming_sender:  Sender<Command>,
+    outgoing_sender: Sender<DataFormat>,
     graceful_stop: bool,
     // TODO: introduce last_housekeeping_message
 }
 
 impl<DataFormat> ModuleRunner<DataFormat> {
 
-    pub fn new(executor: Box<dyn Executor<DataFormat>>, timeout_duration: Duration, outgoing_sender: Sender<OutgoingMessage<DataFormat>>) -> Self {
+    pub fn new(executor: Box<dyn Executor<DataFormat>>, timeout_duration: Duration, outgoing_sender: Sender<DataFormat>) -> Self {
         let (sender, receiver) = unbounded();
         Self {
             executor,
@@ -34,18 +34,18 @@ impl<DataFormat> ModuleRunner<DataFormat> {
         // Handle messages, non-blocking. If multiple messages arrived, all of them will be executed
         self.incoming_receiver.try_iter().for_each(|message| {
             match message {
-                IncomingMessage::Stop => {
+                Command::Stop => {
                     //
                     self.graceful_stop = true;
                     self.executor.on_stop();
                 }
-                IncomingMessage::Housekeeping => {
+                Command::Housekeeping => {
                     // TODO: implement
                     // Will set the last received housekeeping message
                     self.executor.on_housekeeping_message();
                     panic!("Not implemented yet")
                 }
-                IncomingMessage::SetTimeout(new_duration) => {
+                Command::SetTimeout(new_duration) => {
                     self.executor.on_timeout_change(new_duration);
                     self.timeout_duration = new_duration;
                 }
@@ -58,10 +58,14 @@ impl<DataFormat> ModuleRunner<DataFormat> {
         // TODO: state handling, sending messages, communicating with the Thread itself
         loop {
             self.handle_incoming_messages();
-            let out = self.executor.execute();
+            match self.executor.execute() {
+                None => {}
+                Some(out) => {
+                    self.outgoing_sender.send(out).expect("TODO: panic message");
+                }
+            }
             
             // TODO: state handling!
-            self.outgoing_sender.send(OutgoingMessage::CollectedData(out)).expect("TODO: panic message");
 
             // TODO: Check Housekeeping interval. If limit exceeded, set graceful stop
             if self.graceful_stop {

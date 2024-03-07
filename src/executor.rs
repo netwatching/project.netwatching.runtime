@@ -6,7 +6,7 @@ use async_trait::async_trait;
 pub trait Executor<DataFormat> {
 
     /// Main code will be executed here!
-    fn execute(&self) -> DataFormat;
+    fn execute(&self) -> Option<DataFormat>;
 
     /// Will be called when stop is received
     fn on_stop(&mut self) {

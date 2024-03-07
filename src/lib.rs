@@ -1,7 +1,7 @@
 pub mod handler;
 pub mod module_runner;
 pub mod executor;
-pub mod message;
+pub mod command;
 
 #[cfg(test)]
 mod tests {
@@ -12,7 +12,7 @@ mod tests {
 
     use crate::executor::Executor;
     use crate::handler::Handler;
-    use crate::message::{IncomingMessage, OutgoingMessage};
+    use crate::command::Command;
     use crate::module_runner::ModuleRunner;
 
     struct TestExecutor {
@@ -20,9 +20,9 @@ mod tests {
     }
 
     impl Executor<u32> for TestExecutor {
-        fn execute(&self) -> u32 {
+        fn execute(&self) -> Option<u32> {
             info!("{} is currently working....", self.name);
-            0
+            Some(0)
         }
 
         fn on_stop(&mut self) {
@@ -43,20 +43,16 @@ mod tests {
     async fn create_handler() {
         tracing_subscriber::fmt::init();
         let mut handler = Handler::new();
-        let (sender, _receiver) = unbounded::<OutgoingMessage<u32>>();
+        let (sender, _receiver) = unbounded::<u32>();
         let module = ModuleRunner::<u32>::new(Box::new(TestExecutor {name: String::from("Slow worker")}), Duration::from_secs(1), sender.clone());
         let module2 = ModuleRunner::<u32>::new(Box::new(TestExecutor {name: String::from("Faster worker")}), Duration::from_secs(2), sender);
         handler.spawn(0, module);
         handler.spawn(1, module2);
         tokio::time::sleep(Duration::from_secs(5)).await;
-        handler.send_message(0, IncomingMessage::Stop);
+        handler.send_message(0, Command::Stop);
         tokio::time::sleep(Duration::from_secs(5)).await;
         _receiver.try_iter().for_each(|message| {
-            match message {
-                OutgoingMessage::CollectedData(data) => {
-                    info!("Received message {data}")
-                }
-            }
+            info!("Received message {message}");
         });
     }
 }
