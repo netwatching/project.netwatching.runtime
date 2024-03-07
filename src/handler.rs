@@ -3,17 +3,17 @@ use std::marker::PhantomData;
 
 use crossbeam_channel::Sender;
 use rayon::prelude::*;
-use tokio::net::windows::named_pipe::PipeMode::Message;
 
 use crate::command::Command;
 use crate::module_runner::ModuleRunner;
 
+#[derive(Debug, Clone)]
 pub struct Handler<OutgoingDataFormat> {
     modules_sender: HashMap<u64, Sender<Command>>,
     pd: PhantomData<OutgoingDataFormat>
 }
 
-impl<OutgoingDataFormat: 'static> Handler<OutgoingDataFormat> {
+impl<OutgoingDataFormat: 'static + Clone> Handler<OutgoingDataFormat> {
     pub fn new() -> Self {
         Self {
             modules_sender: HashMap::new(),
@@ -63,5 +63,5 @@ impl<OutgoingDataFormat: 'static> Handler<OutgoingDataFormat> {
     }
 }
 
-unsafe impl<OutgoingDataFormat> Send for Handler<OutgoingDataFormat> {}
-unsafe impl<OutgoingDataFormat> Sync for Handler<OutgoingDataFormat> {}
+unsafe impl<OutgoingDataFormat: Clone> Send for Handler<OutgoingDataFormat> {}
+unsafe impl<OutgoingDataFormat: Clone> Sync for Handler<OutgoingDataFormat> {}

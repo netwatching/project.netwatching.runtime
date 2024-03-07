@@ -9,7 +9,7 @@ edition = "2021"
 tokio = { version = "1.36.*", features = ["full"] }
 tracing-subscriber = "0.3.*"
 log = "0.4.21"
-async-trait = "0.1.*"
 crossbeam-channel = "0.5.*"
 rayon = "1.9.*"
 chrono = "0.4.*"
+dyn-clone = "1.0.*"

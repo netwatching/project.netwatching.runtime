@@ -1,9 +1,9 @@
+use std::fmt::Debug;
 use std::time::Duration;
 
-use async_trait::async_trait;
+use dyn_clone::DynClone;
 
-#[async_trait]
-pub trait Executor<OutgoingDataFormat> {
+pub trait Executor<OutgoingDataFormat>: DynClone + Debug {
 
     /// Main code will be executed here!
     fn execute(&self) -> Option<OutgoingDataFormat>;
@@ -33,3 +33,6 @@ pub trait Executor<OutgoingDataFormat> {
 
     }
 }
+
+// Works like witchcraft, no clue how this works :D
+dyn_clone::clone_trait_object!(<OutgoingDataFormat> Executor<OutgoingDataFormat>);

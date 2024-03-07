@@ -12,9 +12,9 @@ mod tests {
 
     use crate::executor::Executor;
     use crate::handler::Handler;
-    use crate::command::Command;
     use crate::module_runner::ModuleRunner;
 
+    #[derive(Debug, Clone)]
     struct TestExecutor {
         name: String
     }
@@ -39,7 +39,10 @@ mod tests {
         let module = ModuleRunner::<u32>::new(Box::new(TestExecutor {name: String::from("Slow worker")}), Duration::from_secs(1), sender.clone());
         let module2 = ModuleRunner::<u32>::new(Box::new(TestExecutor {name: String::from("Faster worker")}), Duration::from_secs(2), sender);
         handler.spawn(0, module);
-        handler.spawn(1, module2);
+        for i in 1..20 {
+            handler.spawn(i, module2.clone());
+        }
+
         tokio::time::sleep(Duration::from_secs(5)).await;
         handler.send_stop_message(0);
         tokio::time::sleep(Duration::from_secs(5)).await;

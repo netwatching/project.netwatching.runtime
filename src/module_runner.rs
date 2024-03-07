@@ -8,6 +8,7 @@ use chrono::{DateTime, Utc};
 use crate::executor::Executor;
 use crate::command::Command;
 
+#[derive(Clone, Debug)]
 pub struct ModuleRunner<OutgoingDataFormat> {
     executor: Box<dyn Executor<OutgoingDataFormat>>,
     timeout_duration: Duration,
@@ -84,5 +85,5 @@ impl<OutgoingDataFormat> ModuleRunner<OutgoingDataFormat> {
     }
 }
 
-unsafe impl<OutgoingDataFormat> Send for ModuleRunner<OutgoingDataFormat> {}
-unsafe impl<OutgoingDataFormat> Sync for ModuleRunner<OutgoingDataFormat> {}
+unsafe impl<OutgoingDataFormat: Clone> Send for ModuleRunner<OutgoingDataFormat> {}
+unsafe impl<OutgoingDataFormat: Clone> Sync for ModuleRunner<OutgoingDataFormat> {}
